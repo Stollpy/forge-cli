@@ -31,19 +31,15 @@ class UserShowCommand extends Command
 
         $user = $this->forge->user();
 
+        $serverConnections = collect(['Github', 'Gitlab', 'Bitbucket', 'Digitalocean', 'Aws', 'Linode', 'Vultr']);
+
         $this->table([
-            'ID', 'Email', 'Name', 'Github', 'Gitlab', 'Bitbucket', 'DO', 'AWS', 'Linode', 'Vultr', 'Can create server ?'
+            'ID', 'Email', 'Name', ...$serverConnections, 'Can create server ?'
         ], collect([[
             $user->id,
             $user->email,
             $user->name,
-            $user->connectedToGithub ? 'Yes' : 'No',
-            $user->connectedToGitlab ? 'Yes' : 'No',
-            $user->connectedToBitbucket ? 'Yes' : 'No',
-            $user->connectedToDigitalocean ? 'Yes' : 'No',
-            $user->connectedToAws ? 'Yes' : 'No',
-            $user->connectedToLinode ? 'Yes' : 'No',
-            $user->connectedToVultr ? 'Yes' : 'No',
+            ...$serverConnections->map(fn ($connection) => $user->{"connectedTo$connection"} ? 'Yes' : 'No'),
             $user->canCreateServers ? 'Yes' : 'No'
         ]])->all());
     }

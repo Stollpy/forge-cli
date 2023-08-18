@@ -35,8 +35,8 @@ it('displays the current user', function () {
                 '   Github',
                 '   Gitlab',
                 '   Bitbucket',
-                '   DO',
-                '   AWS',
+                '   Digitalocean',
+                '   Aws',
                 '   Linode',
                 '   Vultr',
                 '   Can create server ?'
