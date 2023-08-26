@@ -60,6 +60,8 @@ return [
         App\Providers\KeyServiceProvider::class,
         App\Providers\RemoteServiceProvider::class,
         App\Providers\TimeServiceProvider::class,
+        Illuminate\Validation\ValidationServiceProvider::class,
+        Illuminate\Translation\TranslationServiceProvider::class,
     ],
 
 ];

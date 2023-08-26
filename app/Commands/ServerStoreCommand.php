@@ -2,7 +2,7 @@
 
 namespace App\Commands;
 
-use App\Rules\ServerStoreRules;
+use App\Factories\Rules\ServerStoreRulesFactory;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
@@ -23,7 +23,7 @@ class ServerStoreCommand extends Command
         {--region=null : The name of the region where the server will be created. This value is not required you are building a Custom VPS server.}
         {--ip_address=null : The IP Address of the server. Only required when the provider is custom.}
         {--private_ip_address=null : The Private IP Address of the server. Only required when the provider is custom.}
-        {--php_version=null : Valid values are php82, php81, php80, php74, php73,php72,php82, php70, and php56.}
+        {--php_version=null : Valid values are php82, php81, php80, php74, php73,php72, php70, and php56.}
         {--database=null : The name of the database Forge should create when building the server. If omitted, forge will be used.}
         {--database_type=null : Valid values are mysql8, mariadb106, mariadb1011, postgres, postgres13, postgres14 or postgres15.}
         {--network=null : An array of server IDs that the server should be able to connect to.}
@@ -61,10 +61,20 @@ class ServerStoreCommand extends Command
          */
 
         $payload = $this->payload();
-        $rules = (new ServerStoreRules())->rules($payload->toArray());
-        $validation = Validator::validate($payload->toArray(), $rules->toArray());
+        $rules = (new ServerStoreRulesFactory())->rules($payload->toArray());
+        $validator = Validator::make($payload->toArray(), $rules->toArray());
 
-        dd($validation);
+        if ($validator->fails()) {
+            foreach ($validator->errors()->toArray() as $property => $errors) {
+                foreach ($errors as $message) {
+                    $message = trans($message, ['attribute' => $property]);
+                    $this->error("{$property}: {$message}");
+                }
+            }
+
+            return self::FAILURE;
+        }
+
     }
 
     protected function payload(): Collection

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Rules;
+namespace App\Factories\Rules;
 
 use Illuminate\Support\Collection;
 
-interface RulesInterface
+interface RulesFactoryInterface
 {
     public function rules(array $data = []): Collection;
 }

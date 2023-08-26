@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Enums\Server;
+namespace App\Enums;
 
-enum Provider: string
+enum ServerProvider: string
 {
     case DIGITAL_OCEAN = "ocean2";
     case LINODE = "linode4";
