@@ -52,12 +52,12 @@ class ServerStoreRulesFactory implements RulesFactoryInterface
             }
         }
 
-        if ($data->has("database")) {
-            $rules->put("database_type", ["required", new Enum(Database::class)]);
+        if ($serverProvider === ServerProvider::HETZNER)  {
+            $rules->put("hetzner_network_id", ["required"]);
         }
 
-        if ($serverProvider === ServerProvider::HETZNER)  {
-            $rules->put("hetzner_network_id", ["rules"]);
+        if ($data->has("database")) {
+            $rules->put("database_type", ["required", new Enum(Database::class)]);
         }
 
         return $rules;

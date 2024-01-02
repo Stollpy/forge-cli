@@ -2,14 +2,19 @@
 
 namespace App\Commands;
 
+use App\Commands\Concerns\InteractsWithValuesFile;
 use App\Factories\Rules\ServerStoreRulesFactory;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
-use LaravelZero\Framework\Commands\Command;
+use Laravel\Forge\Exceptions\TimeoutException;
+use Laravel\Forge\Resources\Server;
+use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
 
 class ServerStoreCommand extends Command
 {
+    use InteractsWithValuesFile;
+
     /**
      * The signature of the command.
      *
@@ -53,57 +58,89 @@ class ServerStoreCommand extends Command
      */
     public function handle()
     {
-        /**
-         * Pour les values, créer un trait dans Command/Interact
-         * Genre le bute c'est de require le fichier de values qui serai un array php
-         * Utiliser la fonctions $this->options(), pour recuperer les options
-         * Mapper ensuites options au values (comme on fait coter front dans les stores :)
-         */
+        try {
+            $payload = $this->payload();
+        } catch (FileNotFoundException $exception) {
+            $this->error($exception->getMessage());
+            return self::INVALID;
+        }
 
-        $payload = $this->payload();
-        $rules = (new ServerStoreRulesFactory())->rules($payload->toArray());
-        $validator = Validator::make($payload->toArray(), $rules->toArray());
+        if (!$this->task("Validation", function () use ($payload) {
+            $rules = (new ServerStoreRulesFactory())->rules($payload->toArray());
+            $validator = Validator::make($payload->toArray(), $rules->toArray());
 
-        if ($validator->fails()) {
-            foreach ($validator->errors()->toArray() as $property => $errors) {
-                foreach ($errors as $message) {
-                    $message = trans($message, ['attribute' => $property]);
-                    $this->error("{$property}: {$message}");
+
+            if ($validator->fails()) {
+                $this->line("");
+                foreach ($validator->errors()->toArray() as $property => $errors) {
+                    foreach ($errors as $message) {
+                        $this->error("{$property}: {$message}");
+                    }
                 }
+
+                $this->error("Validation failed.");
+
+                return false;
+            } else {
+                return true;
+            }
+        })) {
+            return self::INVALID;
+        }
+
+        if (!$this->task("Register server", function () use ($payload) {
+            try {
+                $server = $this->forge->createServer($payload->toArray(), true, 1800);
+            } catch (TimeoutException $exception) {
+                $this->warn("Timeout, the server has not been ready. However, it continues to be created.");
+                return true;
+            } catch (\Exception $exception) {
+                $this->error($exception->getMessage());
+                return false;
             }
 
+            $this->table([
+                "ID", "Name", "Type", "Size", "Region", "Ip Address", "Is Ready", "Sudo Password", "Database Password", "Created At"
+            ], collect([[
+                $server->id,
+                $server->name,
+                $server->type,
+                $server->size,
+                $server->region,
+                $server->ipAddress,
+                $server->isReady ? 'Yes' : 'No',
+                $server->sudoPassword,
+                $server->databasePassword,
+                $server->createdAt
+            ]])->all());
+
+            return true;
+        })) {
             return self::FAILURE;
         }
 
+        return self::SUCCESS;
     }
 
     protected function payload(): Collection
     {
         $payload = collect();
-        $options = $this->options();
-
-        if ("null" !== $options["provider"]) {
-            $payload->put("provider", $this->option("provider"));
-        }
+        $options = $this->values();
 
         if ("22.04" !== $options["ubuntu_version"]) {
-            $payload->put("ubuntu_version", $this->option("ubuntu_version"));
+            $payload->put("ubuntu_version", $options["ubuntu_version"]);
         }
 
         if ("app" !== $options["type"]) {
-            $payload->put("type", $this->option("type"));
+            $payload->put("type", $options["type"]);
         }
 
-        unset($options["provider"], $options["ubuntu_version"], $options["type"]);
+        unset($options["ubuntu_version"], $options["type"]);
 
         foreach ($options as $key => $option) {
             if ("null" !== $option) {
-                $payload->put($key, $this->option($key));
+                $payload->put($key, $option);
             }
-        }
-
-        if ($payload->has("values")) {
-            unset($payload["values"]);
         }
 
         return $payload;
